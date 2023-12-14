@@ -2,6 +2,9 @@
 
 <img width="363" alt="image" src="https://github.com/ruyimarone/data-portraits/assets/10734779/3951d2ee-2560-4fd2-90f2-ec840f2dfbee">
 
+<img width="450" alt="image" src="https://github.com/ruyimarone/data-portraits/assets/10734779/f3fec35c-9879-46b0-a4aa-e264dd06bf01">
+
+
 This is the code for [Data Portraits: Recording Foundation Model Training Data](https://dataportraits.org/) by Marc Marone and Ben Van Durme.
 
 Large models are trained on increasingly immense and opaque datasets, but it can be very difficult to answer a fundamental question: **Was this in a model's training set?**
@@ -15,7 +18,7 @@ See our paper for details about this method, other tools, and properties that ma
 For more details, see [our paper](https://openreview.net/pdf?id=ZrNRBmOzwE).
 
 > [!WARNING]
-> Consider this an alpha release - other portrait files, **MUCH** easier redis installation, and the interface will be added soon!
+> Consider this an alpha code release - other portrait files, **MUCH** easier redis installation, and the interface will be added soon!
 
 ## Installation
 
