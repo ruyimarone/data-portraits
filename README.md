@@ -1,5 +1,7 @@
 # Data Portraits
 
+<img width="363" alt="image" src="https://github.com/ruyimarone/data-portraits/assets/10734779/3951d2ee-2560-4fd2-90f2-ec840f2dfbee">
+
 This is the code for [Data Portraits: Recording Foundation Model Training Data](https://dataportraits.org/) by Marc Marone and Ben Van Durme.
 
 Large models are trained on increasingly immense and opaque datasets, but it can be very difficult to answer a fundamental question: **Was this in a model's training set?**
