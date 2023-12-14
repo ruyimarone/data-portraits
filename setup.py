@@ -7,6 +7,8 @@ setup(
     packages=['dataportraits'],
     package_dir={'':'src'},
     install_requires=[
-        'redis'
+        'redis',
+        'numpy',
+        'tqdm'
     ],
 )
