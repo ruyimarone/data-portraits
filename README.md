@@ -76,7 +76,7 @@ pip install -e . #install editable package
 
 4. Fetch Data Files
 
-    Fetch data from [https://huggingface.co/mmarone/portraits-wikipedia](mmarone/portraits-wikipedia) on HuggingFace:
+    Fetch data from [https://huggingface.co/mmarone/portraits-wikipedia](https://huggingface.co/mmarone/portraits-wikipedia) on HuggingFace:
     ```
     git lfs install
     git clone https://huggingface.co/mmarone/portraits-wikipedia
