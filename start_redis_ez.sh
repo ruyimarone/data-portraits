@@ -18,13 +18,14 @@ cd $run_dir
 
 $portraits_root/redis-stable/bin/redis-server ./redis.conf --loadmodule $portraits_root/$re_bloom --port $port --daemonize yes
 sleep 2 # give redis a chance to start
+$portraits_root/redis-stable/bin/redis-cli -p $port "ping"
 
-if [ -e "redis.pid" ]
-then
-    echo "pid file exists, redis was started!" 1>&2
+if [ $? -eq 0 ]; then
     echo $HOSTNAME:$port
     exit 0
+else
+    echo "Failed to start, check log in $run_dir"
+    exit 1
 fi
 
-echo "Failed to start, check log in $run_dir"
-exit 1
+

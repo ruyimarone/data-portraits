@@ -76,6 +76,8 @@ if __name__ == '__main__':
             key = key.decode('utf-8')
             try:
                 w, s = key.split('.')[-2].split('-') # try to split `some.complex.name.width-stride.bf` into width and stride
+                w = int(w)
+                s = int(s)
             except:
                 raise Exception(f"Couldn't parse {key}, aborting without any writes")
             clean_keys.append((key, w, s))
@@ -106,6 +108,8 @@ if __name__ == '__main__':
             if path.endswith('.bf'):
                 try:
                     w, s = filename.split('.')[-2].split('-') # try to split `some.complex.name.width-stride.bf` into width and stride
+                    w = int(w)
+                    s = int(s)
                 except:
                     raise Exception(f"Couldn't parse {key}, aborting without loading any filters")
 

@@ -3,6 +3,17 @@ import numpy as np
 import itertools
 import tqdm
 
+DUMMY_TOKENIZER_NAME = 'DUMMY_TOKENIZER'
+def init_tokenizer(name_string):
+    if name_string == DUMMY_TOKENIZER_NAME:
+        return dummy_tokenizer
+
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained(name_string)
+    if 'gpt2' in name_string:
+        tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
+
 def chunk_sequence_strided(sequence, width, stride=1, stop_token = -1):
 
     l = len(sequence)
@@ -73,6 +84,39 @@ def batcher_fn(data, batch_size):
         if len(buffer) > 0:
             yield buffer
 
+def max_size_batcher(data, max_size):
+    current_size = 0
+    buffer = []
+    for item in data:
+        buffer.append(item)
+        current_size += len(item)
+        if current_size >= max_size:
+            yield buffer
+            current_size = 0
+            buffer = []
+
+    if len(buffer) > 0:
+        yield buffer
+
+
+# def look_ahead_batcher(data, look_ahead_size, max_size):
+    # for lookahead in batcher_fn(data, look_ahead_size):
+        # lookahead = sorted(lookahead, key = lambda x : len(x))
+        # yield from max_size_batcher(lookahead, max_size)
+
+def look_ahead_batcher(data, look_ahead_size, batch_size):
+    for lookahead in batcher_fn(data, look_ahead_size):
+        lookahead = sorted(lookahead, key = lambda x : len(x))
+        yield from batcher_fn(lookahead, batch_size)
+
+def testtt():
+    import random
+    synth = [("*" * random.randint(1, 100)) + '\n' for _ in range(1000)]
+    q = list(look_ahead_batcher(synth, 66, 1000))
+    for i in q:
+        print(i)
+
+
 class SanitizedWriter:
     def __init__(self, stream=sys.stderr):
         self.stream = stream
@@ -99,8 +143,41 @@ def get_progress(*args, smoothing=0, **kwargs):
 
 def aid(x):
       # This function returns the memory
-      # block address of numpy array.
+      # block address of an array.
       return x.__array_interface__['data'][0]
+
+
+def dummy_tokenizer(batch_of_text, **kwargs):
+    old_state = np.random.get_state()  # store randomness state
+    np.random.seed(1000) # deterministic fake tokenization
+
+    # if 'pad_token_id' in kwargs:
+    #     setattr(dummy_tokenizer, 'pad_token_id', kwargs['pad_token_id'])
+    # else:
+    #     dummy_tokenizer.pad_token_id = -1
+
+    bsz = len(batch_of_text)
+    lens = [len(b.split()) for b in batch_of_text]
+    m = max(lens)
+    base = np.full((bsz, m), dummy_tokenizer.pad_token_id, dtype=np.int64)
+    
+    for ix, l in enumerate(lens):
+        base[ix, :l] = np.random.randint(0, 4096, size=(l))
+
+    if 'return_tensors' in kwargs:
+        # default to numpy
+        pass
+    else:
+        base = base.tolist()
+
+    results = {'input_ids' : base}
+    np.random.set_state(old_state) # restore the old random state
+    return results
+
+dummy_tokenizer.pad_token_id = -1
+
+def identity(*args):
+    return args
 
 sum_table = np.unpackbits(np.arange(256, dtype=np.uint8)).reshape((-1, 8)).sum(axis=1).astype(np.uint8)
 def sum_bits_from_packed(packed_array):
@@ -115,3 +192,8 @@ def sum_bits_from_packed(packed_array):
     assert packed_array.dtype == np.uint8
     return np.sum(sum_table[packed_array])
 
+# def unzip(zipped):
+    # try:
+        # return zip(*zipped)
+    # except ValueError:
+        # return [[] for 

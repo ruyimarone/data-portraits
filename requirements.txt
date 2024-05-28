@@ -1,0 +1,6 @@
+redis>=4.3
+Flask>=2.2
+pytest>=7.2
+#pytokenizations
+numpy
+tqdm
