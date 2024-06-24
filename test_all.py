@@ -132,31 +132,3 @@ def test_sketch_preproc():
     assert flat_batch == [[1459, 599, 2119, 3776],
                             [599, 2119, 3776, 3323],
                             [2119, 3776, 3323, 2398]]
-
-
-def test_feeder_preproc():
-    from feeder import init_worker, worker_fn
-    from types import SimpleNamespace
-
-    mock_args = SimpleNamespace()
-    mock_args.tokenizer = None
-    mock_args.width  = 10
-    mock_args.stride = 10
-    mock_args.command = 'FAKE_COMMAND'
-    mock_args.key = 'FAKE_KEY'
-    mock_args.multiple = True
-
-    init_worker(mock_args)
-    results = worker_fn(["This is a test document .", "Another"])
-    assert len(results) == 1
-    results = results[0]
-    line_end_bytes = b"\r\n"
-    parts = [b.decode() for b in results.split(line_end_bytes)]
-
-    # should generate 2 ngrams: 'This is a ' and 'test docum' of length 10
-    # 'Another' is too short, less than width ( = 10)
-    assert parts == ['*4', '$12', 'FAKE_COMMAND', '$8', 'FAKE_KEY', '$10', 'This is a ', '$10', 'test docum', '']
-
-# options for text pipeline
-# can have tokenizer
-# can be a mock tokenizer

@@ -17,102 +17,44 @@ See our paper for details about this method, other tools, and properties that ma
 
 For more details, see [our paper](https://openreview.net/pdf?id=ZrNRBmOzwE).
 
-> [!WARNING]
-> Consider this an alpha code release - other portrait files, **MUCH** easier redis installation, and the interface will be added soon!
+# Installing
+1. Run the `install_redis.sh` script in the root of this repo. If all goes well, redis and redis bloom will be installed local to this repo.
+2. Install requirements `pip install -r requirements.txt`
+3. [Optional] Install this as a package if you need to import it elsewhere: `pip install -e .`
 
-## Installation
+> [!NOTE]  
+> If there are issues with redis or the redis installation, see the [expected structure page here](redis.md)
 
-This system uses several components: a python library, an bitarray server (redis), and binary files containing data hashes.
+# Running
+Try running `python easy_redis.py --just-start`. If all goes well, this will start a redis server with default parameters (check `python easy_redis.py --help`).
+If this fails, check logs in `instances/`
 
-1. Install the library
-```shell
-pip install -e . #install editable package
-```
+All of this can be handled with the typical `redis-cli` interface if you are familiar with that method. 
 
-2. Install redis and RedisBlooom
+## Loading and Using Bloom Filters
 
-    If you're familiar with redis already and want to use an existing server or a system installation,
-    you can skip this section. Just make sure you know your redis connection details and have RedisBloom loaded into 
-    your server (with config files or command line args)
+Files can be loaded manually (see `from_file` and `to_file`) but the library is now compatible with the Huggingface hub! 
 
-    Included launch scripts assume this repo structure but it's easily changed:
-    ```
-    ├── RedisBloom
-    ├── redis_configs
-    ├── redis-stable
-    ├── scripts
-    └── src
-        └── dataportraits
-    ```
-
-    1. [Install and build Redis](https://redis.io/docs/install/install-redis/install-redis-from-source/)
-
-    Build with `make install PREFIX="$(pwd)" # install to redis-stable/bin` to put binaries in the expected places.
-
-    2. [Install and build RedisBloom](https://github.com/RedisBloom/RedisBloom/)
-
-        Our code was tested against version 2.4.3. *We assume a certain binary header structure in serialized Bloom filter files, other redis versions may change this!*
-
-        You can use the instructions in the repo or these:
-    ```shell
-    git clone https://github.com/RedisBloom/RedisBloom.git
-    cd RedisBloom
-    git checkout tags/v2.4.3 
-    git submodule update --init --recursive
-    make -j 4
-    cd ..
-    ```
-
-3. Start Redis
-
-    We include a launch script helper. If you're familiar with redis already, you can freely launch servers as you would typically or use an existing server.
-
-    ```shell
-    python easy_redis.py --just-start
-    ```
-
-    Note that this starts a persistent, daemon server on your system.
-    Loading sketches will consume ram until you shut it down: `python easy_redis.py --shutdown`
-
-4. Fetch Data Files
-
-    Fetch data from [https://huggingface.co/mmarone/portraits-wikipedia](mmarone/portraits-wikipedia) on HuggingFace:
-    ```
-    git lfs install
-    git clone https://huggingface.co/mmarone/portraits-wikipedia
-    ```
-    **This takes about 2.5GB local space**
-
-5. Load Files
-    ```
-    python easy_redis.py --start-from-dir portraits-wikipedia/
-    ```
-    Note: if redis wasn't already started (e.g. you skipped step 3, this will attempt to start a server for you).
-
-
-
-## Usage
-
-More examples coming soon!
-
-```shell
+```python
+# after running python easy_redis.py --just-start
 import dataportraits
-
-# localhost:8899 is the default for the redis server started above
-# wikipedia.50-50.bf is the name of the system - see the easy_redis.py script for more
-# change as necessary!
-portrait = dataportraits.RedisBFSketch('localhost', 8899, 'wiki-demo.50-50.bf', 50)
+# this downloads ~26GB. But this is much smaller than the whole dataset!
+portrait = dataportraits.from_hub("mmarone/portraits-sketch-stack.50-50.bf", verbose=True)
 
 text = """
-Test sentence about Data Portraits - NOT IN WIKIPEDIA!
-Bloom proposed the technique for applications where the amount of source data would require an impractically large amount of memory if "conventional" error-free hashing techniques were applied
+Test sentence about Data Portraits - NOT IN THE STACK!
+from transformers import AutoTokenizer, AutoModel
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+model = AutoModel.from_pretrained("bert-base-uncased")
+inputs = tokenizer("Hello world!", return_tensors="pt")
+outputs = model(**inputs)
 """
-report = portrait.contains_from_text([text])
-print(report[0]['chains'])
-
-# [['cations where the amount of source data would requ', 'ire an impractically large amount of memory if "co', 'nventional" error-free hashing techniques were app']]
+report = portrait.contains_from_text([text], sort_chains_by_length=True)
+print(report[0]['chains'][0])
+#['s import AutoTokenizer, AutoModel\ntokenizer = Auto', 'Tokenizer.from_pretrained("bert-base-uncased")\nmod', 'el = AutoModel.from_pretrained("bert-base-uncased"', ')\ninputs = tokenizer("Hello world!", return_tensor']
 ```
 
+Please see our paper for details about membership testing. In particular, note the boundary and striding strategy means that not every ngram is stored - but we store enough ngrams that we can still infer whether a long sequence was part of a dataset. 
 
 ## Citing
 If you find this repo or our web demo useful, please cite [our paper](https://openreview.net/pdf?id=ZrNRBmOzwE).
@@ -123,6 +65,7 @@ If you find this repo or our web demo useful, please cite [our paper](https://op
     author={Marc Marone and Benjamin {Van Durme}},
     booktitle={Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
     year={2023},
-    url={https://openreview.net/pdf?id=ZrNRBmOzwE}
+    url={https://proceedings.neurips.cc/paper_files/paper/2023/file/3112ee706d21d734c15532c1239773e1-Paper-Datasets_and_Benchmarks.pdf}
 }
 ```
+
