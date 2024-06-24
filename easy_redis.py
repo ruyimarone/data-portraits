@@ -43,6 +43,7 @@ if __name__ == '__main__':
 
     command_group = parser.add_mutually_exclusive_group(required=True)
     command_group.add_argument("--start-from-dir", type=str, help="Start redis, load all bloom filters from a directory", default=None)
+    command_group.add_argument("--start-from-hub", type=str, help="Start redis, load one bloom filter from a hub path", default=None)
     command_group.add_argument("--just-start", action='store_true', help="Start redis and don't do anything else")
     command_group.add_argument("--dump-to-dir", type=str, help="Dump all filters from a redis instance to a directory", default=None)
     command_group.add_argument("--shutdown-redis", action='store_true', help="Shutdown redis instance")
@@ -51,6 +52,8 @@ if __name__ == '__main__':
     parser.add_argument("--port", type=int, help="redis port", default=8899)
     parser.add_argument("--allow-key-overwrites", action='store_true', help="Allow overwriting the redis keys")
     parser.add_argument("--no-create-dirs", action='store_true', help="Don't create the directory to write to")
+    parser.add_argument("--migrate-temp-dir", type=str, help="Use with start-from-dir, open bfs in legacy mode, and upload them to the HF hub")
+    parser.add_argument("--hf-prefix", type=str, help="Name to use in huggingface e.g. mmarone")
 
     args = parser.parse_args()
 
@@ -76,6 +79,8 @@ if __name__ == '__main__':
             key = key.decode('utf-8')
             try:
                 w, s = key.split('.')[-2].split('-') # try to split `some.complex.name.width-stride.bf` into width and stride
+                w = int(w)
+                s = int(s)
             except:
                 raise Exception(f"Couldn't parse {key}, aborting without any writes")
             clean_keys.append((key, w, s))
@@ -91,30 +96,55 @@ if __name__ == '__main__':
 
         sys.exit(0)
 
-    if args.start_from_dir or args.just_start:
+    if args.start_from_dir or args.just_start or args.start_from_hub:
         start_redis(args)
 
         if args.just_start:
             print("Only starting was requested", file=sys.stderr)
             sys.exit(0)
 
-        assert os.path.isdir(args.start_from_dir)
+        if args.start_from_dir:
+            assert os.path.isdir(args.start_from_dir)
+            if args.migrate_temp_dir:
+                os.makedirs(args.migrate_temp_dir, exist_ok=True)
+                # assert os.path.isdir(args.migrate_temp_dir), "Need a temp directory to use for migration"
+                assert args.hf_prefix, "Need a name to upload to"
+                import huggingface_hub
+                api = huggingface_hub.HfApi()
 
-        filters = []
-        for filename in os.listdir(args.start_from_dir):
-            path = os.path.join(args.start_from_dir, filename)
-            if path.endswith('.bf'):
-                try:
-                    w, s = filename.split('.')[-2].split('-') # try to split `some.complex.name.width-stride.bf` into width and stride
-                except:
-                    raise Exception(f"Couldn't parse {key}, aborting without loading any filters")
+            filters = []
+            for filename in os.listdir(args.start_from_dir):
+                path = os.path.join(args.start_from_dir, filename)
+                if path.endswith('.bf'):
+                    try:
+                        w, s = filename.split('.')[-2].split('-') # try to split `some.complex.name.width-stride.bf` into width and stride
+                        w = int(w)
+                        s = int(s)
+                    except:
+                        raise Exception(f"Couldn't parse {key}, aborting without loading any filters")
+                    # path, key, width, stride
+                    filters.append((path, filename, w, s))
 
-                filters.append((path, filename, w, s))
+            for path, key, width, stride in filters:
+                print(f"Try to load {key} from {path} to {redis_uri}...")
+                sketch = dataportraits.RedisBFSketch.from_file(args.host, args.port, key, width, path, overwrite=args.allow_key_overwrites, legacy=True, verbose=True)
+                print(f"Successfully loaded {sketch}")
+                if args.migrate_temp_dir:
 
-        for path, key, width, stride in filters:
-            print(f"Try to load {key} from {path} to {redis_uri}...")
-            sketch = dataportraits.RedisBFSketch.from_file(args.host, args.port, key, width, path, overwrite=args.allow_key_overwrites)
-            print(f"Successfully loaded {sketch}")
+                    # make a sub directory for this model (otherwise we will upload everything)
+                    temp_dir_for_this_specific_sketch = os.path.join(args.migrate_temp_dir, key)
+                    os.makedirs(temp_dir_for_this_specific_sketch, exist_ok=True)
+
+                    repo_id = f"{args.hf_prefix}/portrait-{key}"
+                    print(f"Write to {temp_dir_for_this_specific_sketch} and upload to {repo_id}")
+                    sketch.to_hub(repo_id, temp_dir_for_this_specific_sketch, verbose=True)
+
+        elif args.start_from_hub:
+            s = dataportraits.from_hub(args.start_from_hub, host=args.host, port=args.port, overwrite=args.allow_key_overwrites, verbose=True)
+            print(s)
+        else:
+            raise Exception("Bad args?")
+
 
     if args.shutdown_redis:
         redis_client = redis.Redis(host=args.host, port=args.port)
