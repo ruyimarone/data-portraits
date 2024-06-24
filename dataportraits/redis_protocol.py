@@ -5,7 +5,7 @@ def num_to_bytes(some_int):
     return str(some_int).encode()
 
 def generate_redis_protocol_basic(*cmd):
-    """generate_redis_protocol_basic. Returns a single redis command byte string.
+    """generate_redis_protocol_basic. Returns a single redis command byte string. 
 
     :param cmd:
     """

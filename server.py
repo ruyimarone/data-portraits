@@ -91,7 +91,7 @@ def process_documents():
                     quip_report['too_short'] = False
                     quip_report['quip_25_beta'] = quip_report['numerator'] / quip_report['denominator']
                 report['quip_report'] = quip_report
-
+                
                 if include_formatting:
                     report['quote_latex'] = dataportraits.span_utils.format_chains(report, latex_hl_start, latex_hl_end)
                     report['quote_text'] = dataportraits.span_utils.format_chains(report, lambda num_quotes : "[" * num_quotes, lambda num_quotes : "]" * num_quotes)

@@ -30,6 +30,8 @@ def check_chain(membership_tests, index, step, accumulator):
 
     return accumulator
 
+# def infer_memberships(memberships, stride=25):
+    # new_memberships = list(memberships) # copy the base
 
 def chain_overlaps(membership_tests, width):
     already_found = set()
@@ -269,14 +271,20 @@ class RedisBFSketch:
                     else:
                         yield data
 
-    def to_file(self, path, verbose=False, legacy=False):
+    def to_file(self, file_path, verbose=False, legacy=False):
+        # file_path  is a path like /some/destination/name.bf
+        # i.e. a file not a directory
+        # in non legacy mode, this is the index file
+        # it should end with .bf
+
+        assert file_path.endswith(".bf")
 
         if not legacy:
             max_bytes = 2 * 1024 ** 3 # 2 GiB
             idxs = []
             part_num = 0
             current_size = 0
-            part_path = f"{path}.part{part_num}.bin"
+            part_path = f"{file_path}.part{part_num}.bin"
 
             f = open(part_path, 'wb')  # Open first part file
 
@@ -285,7 +293,7 @@ class RedisBFSketch:
                 if current_size + block_size > max_bytes:
                     f.close()
                     part_num += 1
-                    part_path = f"{path}.part{part_num}.bin"
+                    part_path = f"{file_path}.part{part_num}.bin"
                     f = open(part_path, 'wb')  # Open new part file
                     current_size = 0
 
@@ -309,35 +317,51 @@ class RedisBFSketch:
                 'last-loaded' : {'host' : self.host, 'port' : self.port}
             }
 
-            with open(path, 'w') as f:
+            with open(file_path, 'w') as f:
                 json.dump(metadata, f, indent=2)
 
         else:
             idxs = []
-            with open(path, 'wb') as f:
+            with open(file_path, 'wb') as f:
                 for it, (iter, block) in enumerate(self.iter_dump(return_iter=True, verbose=verbose)):
                     idx = {'iter' : iter, 'block_num' : it, 'block_size' : len(block)}
                     idxs.append(idx)
                     f.write(block)
 
-            if path == '/dev/null': #TODO is this just for tests?
+            if file_path == '/dev/null': #TODO is this just for tests?
                 return
 
-            with open(path + '.idx', 'w') as f:
+            with open(file_path + '.idx', 'w') as f:
                 json.dump(idxs, f, indent=2)
+
+    def to_hub(self, hub_path, temp_directory, overwrite=False, verbose=False):
+        assert os.path.isdir(temp_directory)
+
+        api = huggingface_hub.HfApi()
+
+        # write to temp file path in a safe temp directory
+        temp_file = os.path.join(temp_directory, self.key)
+        self.to_file(temp_file, verbose=verbose, legacy=False)
+
+        api.create_repo(repo_id=hub_path, private=True, exist_ok=overwrite)
+        api.upload_folder(repo_id=hub_path, folder_path=temp_directory)
+
 
     @classmethod
     def from_hub(cls, hf_hub_path, host="localhost", port="8899",
             key=None, overwrite=False, verbose=False):
 
-        path = huggingface_hub.snapshot_download("mmarone/portraits-stack-v2-temp")
+        path = huggingface_hub.snapshot_download(hf_hub_path)
         bf_files = [f for f in os.listdir(path) if f.endswith('.bf')]
         assert len(bf_files) == 1, "Multiple .bf files were found, hf repo might be broken"
         bf_path_name = bf_files[0]
         bf_full_path = os.path.join(path, bf_path_name)
 
+        if verbose:
+            print(path, file=sys.stderr)
+
         with open(bf_full_path, 'r') as f:
-            metadata = json.load(f)S
+            metadata = json.load(f)
 
         if key is None:
             key = metadata['key']
