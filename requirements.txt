@@ -1,6 +1,8 @@
-redis>=4.3
+redis[hiredis]>=4.3
 Flask>=2.2
 pytest>=7.2
-#pytokenizations # only needed to run server and span manipulations
+huggingface-hub>=0.26.2
+datasets>=3.1.0
+spacy-alignments
 numpy
 tqdm

@@ -6,17 +6,25 @@ import dataportraits.timers as timers
 import time
 import json
 import random
-import tokenizations
+import spacy_alignments as tokenizations
 import datetime
 
 REDIS_HOST = os.environ.get('DS_HOST', 'localhost')
 REDIS_PORT = os.environ.get('DS_PORT', 8899)
+RUN_PORT = os.environ.get('DS_SERVER_PORT', 8000)
 SKETCH_NAME = os.environ.get('DS_NAME')
 SKETCH_WIDTH = int(os.environ.get('DS_WIDTH'))
 
 app = Flask(__name__, static_folder='./site/static', static_url_path='/static',
         template_folder='./site/templates')
 sketch = dataportraits.RedisBFSketch(REDIS_HOST, REDIS_PORT, SKETCH_NAME, SKETCH_WIDTH)
+try:
+    sketch_signature = repr(sketch)
+    sketch_signature = sketch_signature.lstrip(os.path.expanduser("~"))
+except:
+    sketch_signature = "Non Standard Install?"
+
+sketch_signature = f"{sketch_signature} ENV: {REDIS_HOST} {REDIS_PORT} {SKETCH_NAME} {SKETCH_WIDTH}"
 
 MAX_LOG = 10000
 @app.route("/q", methods=["POST", "GET"])
@@ -91,11 +99,11 @@ def process_documents():
                     quip_report['too_short'] = False
                     quip_report['quip_25_beta'] = quip_report['numerator'] / quip_report['denominator']
                 report['quip_report'] = quip_report
-                
+
                 if include_formatting:
                     report['quote_latex'] = dataportraits.span_utils.format_chains(report, latex_hl_start, latex_hl_end)
                     report['quote_text'] = dataportraits.span_utils.format_chains(report, lambda num_quotes : "[" * num_quotes, lambda num_quotes : "]" * num_quotes)
-
+                report['sketch_signature'] = sketch_signature
             print(json.dumps(report, indent=2))
         return jsonify(reports)
 
@@ -105,5 +113,5 @@ def process_documents():
 
 
 if __name__ == '__main__':
-    app.run(debug=False, port=8000, host='0.0.0.0', threaded=True)
+    app.run(debug=False, port=RUN_PORT, host='0.0.0.0', threaded=True)
 

@@ -15,6 +15,7 @@ from functools import partial
 
 import dataportraits.utils as utils
 import dataportraits.code_proc as code_proc
+from dataportraits import span_utils
 
 BFInfo = namedtuple("BFInfo", "chain_size chain_n_filters options growth bytes bits current_size error bits_per_element hashes max_entries n2")
 BF_INFO_STRUCT = "=QLLLQQQddLQB"
@@ -223,6 +224,20 @@ class RedisBFSketch:
             outputs.append(doc_report)
 
         return outputs
+    
+    def contains_pretty(self, text):
+        report = self.contains_from_text([text], stride=1, sort_chains_by_length=True)[0]
+        report['quote_text'] = span_utils.format_chains(report, lambda num_quotes : "[" * num_quotes, lambda num_quotes : "]" * num_quotes)
+        return report['quote_text']
+
+    def add_all(self, ngrams_to_add):
+        # This is very slow due to overhead
+        # with sending and parsing redis responses. 
+        # A faster method involves redis in pipe mode, but this has added complexity. 
+        # This method is sufficient for relatively small datasets (i.e. not full LLM corpora)
+        # hiredis (pip install redis[hiredis]) also helps
+        self.bf_client.madd(self.key, *ngrams_to_add)
+        return
 
     def contains(self, item):
         return self.contains_all([item])[0]
