@@ -6,3 +6,4 @@ datasets>=3.1.0
 spacy-alignments
 numpy
 tqdm
+huggingface_hub
