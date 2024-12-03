@@ -20,15 +20,23 @@ from dataportraits import span_utils
 BFInfo = namedtuple("BFInfo", "chain_size chain_n_filters options growth bytes bits current_size error bits_per_element hashes max_entries n2")
 BF_INFO_STRUCT = "=QLLLQQQddLQB"
 
+# def check_chain(membership_tests, index, step, accumulator):
+#     if index >= len(membership_tests):
+#         return accumulator
+
+#     is_member = membership_tests[index][0]
+#     if is_member:
+#         accumulator.append(index)
+#         return check_chain(membership_tests, index + step, step, accumulator)
+
+#     return accumulator
+
 def check_chain(membership_tests, index, step, accumulator):
-    if index >= len(membership_tests):
-        return accumulator
-
-    is_member = membership_tests[index][0]
-    if is_member:
-        accumulator.append(index)
-        return check_chain(membership_tests, index + step, step, accumulator)
-
+    while index < len(membership_tests):
+        is_member = membership_tests[index][0]
+        if is_member:
+            accumulator.append(index)
+        index += step
     return accumulator
 
 # def infer_memberships(memberships, stride=25):
